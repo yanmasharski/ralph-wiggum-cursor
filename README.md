@@ -2,6 +2,8 @@
 
 An implementation of [Geoffrey Huntley's Ralph Wiggum technique](https://ghuntley.com/ralph/) for Cursor, enabling autonomous AI development with deliberate context management.
 
+> Fork of [agrimsingh/ralph-wiggum-cursor](https://github.com/agrimsingh/ralph-wiggum-cursor) with updated model defaults and a 190k token rotation threshold.
+
 > "That's the beauty of Ralph - the technique is deterministically bad in an undeterministic world."
 
 ## What is Ralph?
@@ -90,7 +92,7 @@ This creates two problems:
 
 ```bash
 cd your-project
-curl -fsSL https://raw.githubusercontent.com/agrimsingh/ralph-wiggum-cursor/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/yanmasharski/ralph-wiggum-cursor/main/install.sh | bash
 ```
 
 This creates:
@@ -650,10 +652,28 @@ Check if criteria are too vague. Each criterion should be:
 - [Cursor CLI docs](https://cursor.com/docs/cli/headless)
 - [gum - A tool for glamorous shell scripts](https://github.com/charmbracelet/gum)
 
+## Fork Changes
+
+This fork tracks [upstream](https://github.com/agrimsingh/ralph-wiggum-cursor) and adds:
+
+| Change | Upstream | This fork |
+|--------|----------|-----------|
+| Default model | `opus-4.5-thinking` | `auto` |
+| Model picker | Older model IDs | Current Cursor models (`composer-2.5-fast`, `opus-4.8-thinking`, `sonnet-4.6`, `haiku-4.5`, `gpt-5.5-medium`, …) |
+| Rotation threshold | 80k tokens (warn at 70k) | 190k tokens (warn at ~166k) |
+
+To pull upstream changes:
+
+```bash
+git fetch upstream
+git merge upstream/main
+```
+
 ## Credits
 
-- **Original technique**: [Geoffrey Huntley](https://ghuntley.com/ralph/) - the Ralph Wiggum methodology
-- **Cursor port**: [Agrim Singh](https://x.com/agrimsingh) - this implementation
+- **Original technique**: [Geoffrey Huntley](https://ghuntley.com/ralph/) — the Ralph Wiggum methodology
+- **Cursor port**: [Agrim Singh](https://x.com/agrimsingh) — [original implementation](https://github.com/agrimsingh/ralph-wiggum-cursor)
+- **This fork**: [Yan Masharski](https://github.com/yanmasharski) — model defaults and context thresholds
 
 ## License
 
