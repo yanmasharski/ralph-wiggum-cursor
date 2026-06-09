@@ -23,15 +23,16 @@ fi
 # CONFIGURATION (can be overridden before sourcing)
 # =============================================================================
 
-# Token thresholds
-WARN_THRESHOLD="${WARN_THRESHOLD:-70000}"
-ROTATE_THRESHOLD="${ROTATE_THRESHOLD:-80000}"
+# Token thresholds (190K context window; warn at ~87.5%)
+WARN_THRESHOLD="${WARN_THRESHOLD:-166250}"
+ROTATE_THRESHOLD="${ROTATE_THRESHOLD:-190000}"
+export WARN_THRESHOLD ROTATE_THRESHOLD
 
 # Iteration limits
 MAX_ITERATIONS="${MAX_ITERATIONS:-20}"
 
 # Model selection
-DEFAULT_MODEL="opus-4.5-thinking"
+DEFAULT_MODEL="auto"
 MODEL="${RALPH_MODEL:-$DEFAULT_MODEL}"
 
 # Feature flags (set by caller)

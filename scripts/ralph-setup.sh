@@ -42,10 +42,12 @@ fi
 
 # Model options
 MODELS=(
-  "opus-4.5-thinking"
-  "sonnet-4.5-thinking"
-  "gpt-5.2-high"
-  "composer-1"
+  "auto"
+  "composer-2.5-fast"
+  "opus-4.8-thinking"
+  "sonnet-4.6"
+  "haiku-4.5"
+  "gpt-5.5-medium"
   "Custom..."
 )
 
@@ -53,7 +55,7 @@ MODELS=(
 select_model() {
   if [[ "$HAS_GUM" == "true" ]]; then
     local selected
-    selected=$(gum choose --header "Select model:" "${MODELS[@]}")
+    selected=$(gum choose --header "Select model:" --selected "$DEFAULT_MODEL" "${MODELS[@]}")
     
     if [[ "$selected" == "Custom..." ]]; then
       selected=$(gum input --placeholder "Enter model name" --value "$DEFAULT_MODEL")

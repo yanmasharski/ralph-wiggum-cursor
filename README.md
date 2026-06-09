@@ -55,8 +55,8 @@ This creates two problems:
 │     ┌────────────────┴────────┴────────────────┐            │
 │     ▼                                           ▼            │
 │  .ralph/                                    Signals          │
-│  ├── activity.log  (tool calls)            ├── WARN at 70k  │
-│  ├── errors.log    (failures)              ├── ROTATE at 80k│
+│  ├── activity.log  (tool calls)            ├── WARN at ~166k │
+│  ├── errors.log    (failures)              ├── ROTATE at 190k│
 │  ├── progress.md   (agent writes)          ├── COMPLETE     │
 │  ├── guardrails.md (lessons learned)       ├── GUTTER       │
 │  └── tasks.yaml    (cached task state)     └── DEFER        │
@@ -126,10 +126,12 @@ With gum, you get a beautiful interactive menu for selecting models and options:
 
 ```
 ? Select model:
-  ◉ opus-4.5-thinking
-  ◯ sonnet-4.5-thinking
-  ◯ gpt-5.2-high
-  ◯ composer-1
+  ◉ auto
+  ◯ composer-2.5-fast
+  ◯ opus-4.8-thinking
+  ◯ sonnet-4.6
+  ◯ haiku-4.5
+  ◯ gpt-5.5-medium
   ◯ Custom...
 
 ? Max iterations: 20
@@ -189,8 +191,8 @@ Ralph will:
 1. Show interactive UI for model and options (or simple prompts if gum not installed)
 2. Run `cursor-agent` with your task
 3. Parse output in real-time, tracking token usage
-4. At 70k tokens: warn agent to wrap up current work
-5. At 80k tokens: rotate to fresh context
+4. At ~166k tokens: warn agent to wrap up current work
+5. At 190k tokens: rotate to fresh context
 6. Repeat until all `[ ]` are `[x]` (or max iterations reached)
 
 ### 5. Monitor Progress
@@ -203,7 +205,7 @@ tail -f .ralph/activity.log
 # [12:34:56] 🟢 READ src/index.ts (245 lines, ~24.5KB)
 # [12:34:58] 🟢 WRITE src/routes/users.ts (50 lines, 2.1KB)
 # [12:35:01] 🟢 SHELL pnpm test → exit 0
-# [12:35:10] 🟢 TOKENS: 45,230 / 80,000 (56%) [read:30KB write:5KB assist:10KB shell:0KB]
+# [12:35:10] 🟢 TOKENS: 45,230 / 190,000 (24%) [read:30KB write:5KB assist:10KB shell:0KB]
 
 # Check for failures
 cat .ralph/errors.log
@@ -225,7 +227,7 @@ cat .ralph/errors.log
 
 Options:
   -n, --iterations N     Max iterations (default: 20)
-  -m, --model MODEL      Model to use (default: opus-4.5-thinking)
+  -m, --model MODEL      Model to use (default: auto)
   --branch NAME          Sequential: create/work on branch; Parallel: integration branch name
   --pr                   Sequential: open PR (requires --branch); Parallel: open ONE integration PR (branch optional)
   --parallel             Run tasks in parallel with worktrees
@@ -241,7 +243,7 @@ Options:
 ./ralph-loop.sh --branch feature/api --pr -y
 
 # Use a different model with more iterations
-./ralph-loop.sh -n 50 -m gpt-5.2-high
+./ralph-loop.sh -n 50 -m gpt-5.5-medium
 
 # Run 4 agents in parallel
 ./ralph-loop.sh --parallel --max-parallel 4
@@ -452,7 +454,7 @@ Iteration 1                    Iteration 2                    Iteration N
 │ Commit to git    │          │ Commit to git    │          │ Commit to git    │
 │       │          │          │       │          │          │       │          │
 │       ▼          │          │       ▼          │          │       ▼          │
-│ 80k tokens       │          │ 80k tokens       │          │ All [x] done!    │
+│ 190k tokens      │          │ 190k tokens      │          │ All [x] done!    │
 │ ROTATE ──────────┼──────────┼──────────────────┼──────────┼──► COMPLETE      │
 └──────────────────┘          └──────────────────┘          └──────────────────┘
 ```
@@ -508,8 +510,8 @@ The activity log shows context health with emoji:
 Example:
 ```
 [12:34:56] 🟢 READ src/index.ts (245 lines, ~24.5KB)
-[12:40:22] 🟡 TOKENS: 58,000 / 80,000 (72%) - approaching limit [read:40KB write:8KB assist:10KB shell:0KB]
-[12:45:33] 🔴 TOKENS: 72,500 / 80,000 (90%) - rotation imminent
+[12:40:22] 🟡 TOKENS: 140,000 / 190,000 (74%) - approaching limit [read:40KB write:8KB assist:10KB shell:0KB]
+[12:45:33] 🔴 TOKENS: 172,500 / 190,000 (91%) - rotation imminent
 ```
 
 ## Gutter Detection
@@ -578,18 +580,18 @@ Configuration is set via command-line flags or environment variables:
 
 ```bash
 # Via flags (recommended)
-./ralph-loop.sh -n 50 -m gpt-5.2-high
+./ralph-loop.sh -n 50 -m gpt-5.5-medium
 
 # Via environment
-RALPH_MODEL=gpt-5.2-high MAX_ITERATIONS=50 ./ralph-loop.sh
+RALPH_MODEL=gpt-5.5-medium MAX_ITERATIONS=50 ./ralph-loop.sh
 ```
 
 Default thresholds in `ralph-common.sh`:
 
 ```bash
 MAX_ITERATIONS=20       # Max rotations before giving up
-WARN_THRESHOLD=70000    # Tokens: send wrapup warning
-ROTATE_THRESHOLD=80000  # Tokens: force rotation
+WARN_THRESHOLD=166250   # Tokens: send wrapup warning (~87.5% of 190k)
+ROTATE_THRESHOLD=190000 # Tokens: force rotation
 ```
 
 ## Troubleshooting
