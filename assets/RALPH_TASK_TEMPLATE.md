@@ -46,9 +46,11 @@ Use `<!-- group: N -->` to control execution order in parallel mode:
 - Tasks with the same group run in parallel
 - Unannotated tasks run LAST (after all annotated groups)
 
+Use `<!-- role: name -->` to assign a role. The agent reads `roles/<name>.md` (or `.ralph/roles/<name>.md`) before working on that criterion.
+
 Example:
 ```
-- [ ] Create user model <!-- group: 1 -->
+- [ ] Create user model <!-- group: 1 --> <!-- role: backend -->
 - [ ] Create post model <!-- group: 1 -->
 - [ ] Add relationships <!-- group: 2 -->
 - [ ] Update README  # runs last (no annotation)

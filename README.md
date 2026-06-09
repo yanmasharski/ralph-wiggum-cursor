@@ -183,6 +183,55 @@ Build a REST API with user management.
 
 **Important:** Use `[ ]` checkboxes. Ralph tracks completion by counting unchecked boxes.
 
+### 3b. Import a Plan File (optional)
+
+Keep your task list in a separate markdown plan and copy its checkboxes into `RALPH_TASK.md` at startup:
+
+```bash
+./.cursor/ralph-scripts/ralph-setup.sh --plan docs/plan.md
+./.cursor/ralph-scripts/ralph-loop.sh --plan docs/plan.md -y
+./.cursor/ralph-scripts/ralph-once.sh --plan docs/plan.md
+```
+
+Ralph extracts every checkbox line (`- [ ]`, `1. [x]`, etc.) from the plan file and replaces the checkbox items under `## Success Criteria` (or `## Tasks`) in `RALPH_TASK.md`. Checked/unchecked state is preserved. If `RALPH_TASK.md` does not exist, Ralph creates one from the plan.
+
+Example plan (`docs/plan.md`):
+
+```markdown
+# Release plan
+
+- [ ] Add auth API <!-- group: 1 --> <!-- role: backend -->
+- [ ] Build login page <!-- group: 2 --> <!-- role: frontend -->
+- [ ] Update README
+```
+
+See `assets/PLAN_EXAMPLE.md` in this repo for a fuller example.
+
+### 3c. Task Roles (optional)
+
+Assign a role to a criterion so the agent reads a role description before working on it:
+
+```markdown
+- [ ] Add user endpoints <!-- role: backend -->
+- [ ] Build settings UI <!-- role: frontend -->
+```
+
+Put role files here (first match wins):
+
+| Location | Example |
+|----------|---------|
+| `roles/<role>.md` | `roles/backend.md` |
+| `.ralph/roles/<role>.md` | `.ralph/roles/backend.md` |
+| Custom directory via `--roles-dir` | `./team/roles/backend.md` |
+
+```bash
+./ralph-loop.sh --plan docs/plan.md --roles-dir roles/ -y
+```
+
+The agent prompt lists pending criteria with roles and the file to read. In parallel mode, role files are copied into each agent worktree.
+
+See `assets/roles/` for example role files.
+
 ### 4. Start the Loop
 
 ```bash
@@ -235,6 +284,8 @@ Options:
   --parallel             Run tasks in parallel with worktrees
   --max-parallel N       Max parallel agents (default: 3)
   --no-merge             Skip auto-merge in parallel mode
+  --plan PATH            Import checkbox plan from markdown into RALPH_TASK.md
+  --roles-dir PATH       Directory containing role description .md files
   -y, --yes              Skip confirmation prompt
 ```
 
@@ -258,6 +309,10 @@ Options:
 
 # Parallel: open ONE PR using an auto-named integration branch
 ./ralph-loop.sh --parallel --max-parallel 5 --pr
+
+# Import a plan, then run tasks in parallel
+./ralph-loop.sh --plan docs/plan.md --parallel --max-parallel 4 -y
+./ralph-loop.sh --plan plan.md --roles-dir roles/ --parallel -y
 ```
 
 ## Parallel Execution
@@ -568,6 +623,7 @@ Both are verified before declaring success.
 | File | Purpose | Who Uses It |
 |------|---------|-------------|
 | `RALPH_TASK.md` | Task definition + success criteria | You define, agent reads |
+| `.ralph/plan.source` | Last imported plan file path | Written on `--plan` import |
 | `.ralph/progress.md` | What's been accomplished | Agent writes after work |
 | `.ralph/guardrails.md` | Lessons learned (Signs) | Agent reads first, writes after failures |
 | `.ralph/activity.log` | Tool call log with token counts | Parser writes, you monitor |
@@ -586,6 +642,7 @@ Configuration is set via command-line flags or environment variables:
 
 # Via environment
 RALPH_MODEL=gpt-5.5-medium MAX_ITERATIONS=50 ./ralph-loop.sh
+RALPH_PLAN_FILE=docs/plan.md RALPH_ROLES_DIR=roles/ ./ralph-loop.sh -y
 ```
 
 Default thresholds in `ralph-common.sh`:
@@ -661,6 +718,8 @@ This fork tracks [upstream](https://github.com/agrimsingh/ralph-wiggum-cursor) a
 | Default model | `opus-4.5-thinking` | `auto` |
 | Model picker | Older model IDs | Current Cursor models (`composer-2.5-fast`, `opus-4.8-thinking`, `sonnet-4.6`, `haiku-4.5`, `gpt-5.5-medium`, …) |
 | Rotation threshold | 80k tokens (warn at 70k) | 190k tokens (warn at ~166k) |
+| Plan import | — | `--plan` copies checkboxes from an external `.md` plan |
+| Task roles | — | `<!-- role: name -->` + role `.md` files |
 
 To pull upstream changes:
 

@@ -22,6 +22,8 @@
 #   --max-parallel N       Max parallel agents (default: 3)
 #   --no-merge             Skip auto-merge in parallel mode
 #   -y, --yes              Skip confirmation prompt
+#   --plan PATH            Import checkbox plan from markdown into RALPH_TASK.md
+#   --roles-dir PATH       Directory containing role description .md files
 #   -h, --help             Show this help
 #
 # Requirements:
@@ -62,17 +64,26 @@ Options:
   --max-parallel N       Max parallel agents (default: 3)
   --no-merge             Skip auto-merge in parallel mode
   -y, --yes              Skip confirmation prompt
+  --plan PATH            Import checkbox plan from markdown into RALPH_TASK.md
+  --roles-dir PATH       Directory containing role description .md files
   -h, --help             Show this help
 
 Examples:
   ./ralph-loop.sh                                    # Interactive mode
   ./ralph-loop.sh -n 50                              # 50 iterations max
-  ./ralph-loop.sh -m gpt-5.5-medium                    # Use GPT model
-  ./ralph-loop.sh --branch feature/api --pr -y      # Scripted PR workflow
-  ./ralph-loop.sh --parallel --max-parallel 4        # Run 4 agents in parallel
-  
+  ./ralph-loop.sh -m gpt-5.5-medium                  # Use GPT model
+  ./ralph-loop.sh --branch feature/api --pr -y         # Scripted PR workflow
+  ./ralph-loop.sh --parallel --max-parallel 4          # Run 4 agents in parallel
+  ./ralph-loop.sh --parallel --no-merge
+  ./ralph-loop.sh --parallel --max-parallel 5 --branch feature/multi-task --pr
+  ./ralph-loop.sh --parallel --max-parallel 5 --pr
+  ./ralph-loop.sh --plan docs/plan.md --parallel --max-parallel 4 -y
+  ./ralph-loop.sh --plan plan.md --roles-dir roles/ --parallel -y
+
 Environment:
   RALPH_MODEL            Override default model (same as -m flag)
+  RALPH_PLAN_FILE        Plan markdown path (same as --plan)
+  RALPH_ROLES_DIR        Roles directory (same as --roles-dir)
 
 For interactive setup with a beautiful UI, use ralph-setup.sh instead.
 EOF
@@ -121,6 +132,15 @@ while [[ $# -gt 0 ]]; do
       SKIP_CONFIRM=true
       shift
       ;;
+    --plan)
+      RALPH_PLAN_FILE="$2"
+      shift 2
+      ;;
+    --roles-dir)
+      RALPH_ROLES_DIR="$2"
+      export RALPH_ROLES_DIR
+      shift 2
+      ;;
     -h|--help)
       show_help
       exit 0
@@ -157,6 +177,14 @@ main() {
   # Show banner
   show_banner
   
+  # Initialize .ralph directory
+  init_ralph_dir "$WORKSPACE"
+
+  # Import plan checkboxes before prerequisite check (may create RALPH_TASK.md)
+  if ! apply_plan_if_set "$WORKSPACE"; then
+    exit 1
+  fi
+  
   # Check prerequisites
   if ! check_prerequisites "$WORKSPACE"; then
     exit 1
@@ -168,9 +196,6 @@ main() {
     echo "   Example: ./ralph-loop.sh --branch feature/foo --pr"
     exit 1
   fi
-  
-  # Initialize .ralph directory
-  init_ralph_dir "$WORKSPACE"
   
   echo "Workspace: $WORKSPACE"
   echo "Task:      $task_file"
@@ -206,8 +231,14 @@ main() {
   
   # Confirm before starting (unless -y flag)
   if [[ "$SKIP_CONFIRM" != "true" ]]; then
-    echo "This will run cursor-agent locally to work on this task."
-    echo "The agent will be rotated when context fills up (~190k tokens)."
+    if [[ "$PARALLEL_MODE" == "true" ]]; then
+      echo "This will run up to $MAX_PARALLEL cursor-agent processes in parallel (git worktrees)."
+      [[ "$SKIP_MERGE" == "true" ]] && echo "Branches will be kept separate (--no-merge)."
+      [[ "$OPEN_PR" == "true" ]] && echo "One integration PR will be opened when agents finish."
+    else
+      echo "This will run cursor-agent locally to work on this task."
+      echo "The agent will be rotated when context fills up (~190k tokens)."
+    fi
     echo ""
     echo "Tip: Use ralph-setup.sh for interactive model/option selection."
     echo "     Use -y flag to skip this prompt."

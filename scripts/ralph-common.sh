@@ -40,6 +40,10 @@ USE_BRANCH="${USE_BRANCH:-}"
 OPEN_PR="${OPEN_PR:-false}"
 SKIP_CONFIRM="${SKIP_CONFIRM:-false}"
 
+# Plan import (set via --plan or RALPH_PLAN_FILE)
+RALPH_PLAN_FILE="${RALPH_PLAN_FILE:-}"
+export RALPH_ROLES_DIR="${RALPH_ROLES_DIR:-}"
+
 # =============================================================================
 # SOURCE RETRY UTILITIES
 # =============================================================================
@@ -382,6 +386,22 @@ refresh_task_cache() {
 build_prompt() {
   local workspace="$1"
   local iteration="$2"
+  local role_context=""
+  local plan_note=""
+
+  if [[ "${_TASK_PARSER_AVAILABLE:-0}" -eq 1 ]]; then
+    role_context=$(build_role_context "$workspace")
+  fi
+
+  if [[ -f "$workspace/.ralph/plan.source" ]]; then
+    local plan_source
+    plan_source=$(cat "$workspace/.ralph/plan.source")
+    plan_note="## Plan Source
+
+Task checkboxes were imported from: \`${plan_source}\`
+
+"
+  fi
   
   cat << EOF
 # Ralph Iteration $iteration
@@ -396,6 +416,7 @@ Before doing anything:
 3. Read \`.ralph/progress.md\` - what's been accomplished
 4. Read \`.ralph/errors.log\` - recent failures to avoid
 
+${plan_note}${role_context}
 ## Working Directory (Critical)
 
 You are already in a git repository. Work HERE, not in a subdirectory:
@@ -423,13 +444,14 @@ If you get rotated, the next agent picks up from your last commit. Your commits 
 ## Task Execution
 
 1. Work on the next unchecked criterion in RALPH_TASK.md (look for \`[ ]\`)
-2. Run tests after changes (check RALPH_TASK.md for test_command)
-3. **Mark completed criteria**: Edit RALPH_TASK.md and change \`[ ]\` to \`[x]\`
+2. If the criterion has a role, read its role file first (see Task Roles above)
+3. Run tests after changes (check RALPH_TASK.md for test_command)
+4. **Mark completed criteria**: Edit RALPH_TASK.md and change \`[ ]\` to \`[x]\`
    - Example: \`- [ ] Implement parser\` becomes \`- [x] Implement parser\`
    - This is how progress is tracked - YOU MUST update the file
-4. Update \`.ralph/progress.md\` with what you accomplished
-5. When ALL criteria show \`[x]\`: output \`<ralph>COMPLETE</ralph>\`
-6. If stuck 3+ times on same issue: output \`<ralph>GUTTER</ralph>\`
+5. Update \`.ralph/progress.md\` with what you accomplished
+6. When ALL criteria show \`[x]\`: output \`<ralph>COMPLETE</ralph>\`
+7. If stuck 3+ times on same issue: output \`<ralph>GUTTER</ralph>\`
 
 ## Learning from Failures
 
@@ -742,6 +764,32 @@ run_ralph_loop() {
   echo "⚠️  Max iterations ($MAX_ITERATIONS) reached."
   echo "   Task may not be complete. Check progress manually."
   return 1
+}
+
+# =============================================================================
+# PLAN IMPORT
+# =============================================================================
+
+# Import checkboxes from RALPH_PLAN_FILE into RALPH_TASK.md (if set)
+apply_plan_if_set() {
+  local workspace="$1"
+
+  if [[ -z "${RALPH_PLAN_FILE:-}" ]]; then
+    return 0
+  fi
+
+  if [[ "${_TASK_PARSER_AVAILABLE:-0}" -ne 1 ]]; then
+    echo "❌ Plan import requires task-parser.sh" >&2
+    return 1
+  fi
+
+  echo "📋 Importing checkboxes from plan: $RALPH_PLAN_FILE"
+  if ! import_plan_to_ralph_task "$workspace" "$RALPH_PLAN_FILE"; then
+    return 1
+  fi
+  echo "✓ Updated RALPH_TASK.md from plan"
+  echo ""
+  return 0
 }
 
 # =============================================================================

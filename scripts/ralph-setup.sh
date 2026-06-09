@@ -7,6 +7,8 @@
 # Usage:
 #   ./ralph-setup.sh                    # Interactive setup + run loop
 #   ./ralph-setup.sh /path/to/project   # Run in specific project
+#   ./ralph-setup.sh --plan docs/plan.md
+#   ./ralph-setup.sh --plan plan.md --roles-dir roles/
 #
 # Requirements:
 #   - RALPH_TASK.md in the project root
@@ -214,13 +216,17 @@ main() {
   fi
   echo ""
   
+  # Initialize .ralph directory
+  init_ralph_dir "$workspace"
+
+  if ! apply_plan_if_set "$workspace"; then
+    exit 1
+  fi
+
   # Check prerequisites
   if ! check_prerequisites "$workspace"; then
     exit 1
   fi
-  
-  # Initialize .ralph directory
-  init_ralph_dir "$workspace"
   
   echo "Workspace: $workspace"
   echo ""
@@ -456,4 +462,36 @@ main() {
   fi
 }
 
-main "$@"
+# =============================================================================
+# ARGUMENT PARSING
+# =============================================================================
+
+WORKSPACE="."
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --plan)
+      RALPH_PLAN_FILE="$2"
+      shift 2
+      ;;
+    --roles-dir)
+      RALPH_ROLES_DIR="$2"
+      export RALPH_ROLES_DIR
+      shift 2
+      ;;
+    -h|--help)
+      echo "Usage: $0 [--plan PATH] [--roles-dir PATH] [workspace]"
+      exit 0
+      ;;
+    -*)
+      echo "Unknown option: $1"
+      exit 1
+      ;;
+    *)
+      WORKSPACE="$1"
+      shift
+      ;;
+  esac
+done
+
+main "$WORKSPACE"

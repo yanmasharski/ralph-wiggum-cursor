@@ -217,7 +217,7 @@ cleanup_all_worktrees() {
 
 # Run a single agent in its worktree
 # Uses globals: RUN_ID, BASE_SHA
-# Args: task_id, task_desc, display_agent_num, job_id, worktree_dir, log_file, status_file, output_file
+# Args: task_id, task_desc, display_agent_num, job_id, worktree_dir, log_file, status_file, output_file, workspace
 run_agent_in_worktree() {
   local task_id="$1"
   local task_desc="$2"
@@ -227,8 +227,14 @@ run_agent_in_worktree() {
   local log_file="$6"
   local status_file="$7"
   local output_file="$8"
+  local workspace="$9"
   
   echo "running" > "$status_file"
+  
+  local role_context=""
+  if type build_single_task_role_context &>/dev/null; then
+    role_context=$(build_single_task_role_context "$workspace" "$task_id")
+  fi
   
   # Build the parallel agent prompt
   local report_rel=".ralph/parallel/${RUN_ID}/agent-${job_id}.md"
@@ -238,17 +244,19 @@ You are Agent ${display_agent_num} (job: ${job_id}) working on a specific task i
 
 ## Your Task
 $task_desc
+${role_context}
 
 ## Instructions
-1. Implement this specific task completely
-2. Write tests if appropriate
-3. Do NOT touch .ralph/progress.md in parallel mode (it causes merge conflicts)
-4. Write a short report to: ${report_rel}
+1. If a role is assigned above, read its role file first and follow its instructions
+2. Implement this specific task completely
+3. Write tests if appropriate
+4. Do NOT touch .ralph/progress.md in parallel mode (it causes merge conflicts)
+5. Write a short report to: ${report_rel}
    - What you changed
    - Files touched
    - How to run tests
    - Any gotchas
-5. Commit your changes (including the report) with a message like: ralph: [task summary]
+6. Commit your changes (including the report) with a message like: ralph: [task summary]
 
 ## Important
 - You are in an isolated worktree - your changes will not affect other agents
@@ -584,7 +592,7 @@ run_parallel_tasks() {
     
     # Get tasks for this group
     local tasks=()
-    while IFS='|' read -r id status group desc; do
+    while IFS='|' read -r id _status _group _role desc; do
       tasks+=("$id|$desc")
     done < <(get_tasks_by_group "$workspace" "$current_group")
     
@@ -671,15 +679,18 @@ run_parallel_tasks() {
       job_ids+=("$job_id")
       batch_slots+=("$batch_slot")
       
-      # Copy RALPH_TASK.md to worktree
+      # Copy RALPH_TASK.md and role files to worktree
       cp "$workspace/RALPH_TASK.md" "$worktree_dir/" 2>/dev/null || true
+      if type copy_role_files_to_worktree &>/dev/null; then
+        copy_role_files_to_worktree "$workspace" "$worktree_dir"
+      fi
 
       # Record in manifest (with group, run_id, base_sha)
       echo -e "$(date -u '+%Y-%m-%dT%H:%M:%SZ')\tstart\t${RUN_ID}\t${current_group}\t${job_id}\t${task_id}\t${branch_name}\tstarting\t${BASE_SHA}\t${log_file}\t${worktree_dir}" >> "$manifest"
       
       # Start agent in background
       (
-        run_agent_in_worktree "$task_id" "$task_desc" "$batch_slot" "$job_id" "$worktree_dir" "$log_file" "$status_file" "$output_file"
+        run_agent_in_worktree "$task_id" "$task_desc" "$batch_slot" "$job_id" "$worktree_dir" "$log_file" "$status_file" "$output_file" "$workspace"
       ) &
       pids+=($!)
     done

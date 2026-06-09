@@ -42,6 +42,8 @@ Usage:
 
 Options:
   -m, --model MODEL      Model to use (default: auto)
+  --plan PATH            Import checkbox plan from markdown into RALPH_TASK.md
+  --roles-dir PATH       Directory containing role description .md files
   -h, --help             Show this help
 
 Examples:
@@ -61,6 +63,15 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     -m|--model)
       MODEL="$2"
+      shift 2
+      ;;
+    --plan)
+      RALPH_PLAN_FILE="$2"
+      shift 2
+      ;;
+    --roles-dir)
+      RALPH_ROLES_DIR="$2"
+      export RALPH_ROLES_DIR
       shift 2
       ;;
     -h|--help)
@@ -107,13 +118,17 @@ main() {
   echo "═══════════════════════════════════════════════════════════════════"
   echo ""
   
+  # Initialize .ralph directory
+  init_ralph_dir "$WORKSPACE"
+
+  if ! apply_plan_if_set "$WORKSPACE"; then
+    exit 1
+  fi
+
   # Check prerequisites
   if ! check_prerequisites "$WORKSPACE"; then
     exit 1
   fi
-  
-  # Initialize .ralph directory
-  init_ralph_dir "$WORKSPACE"
   
   echo "Workspace: $WORKSPACE"
   echo "Model:     $MODEL"
