@@ -1,10 +1,13 @@
 #!/bin/bash
 # Ralph Wiggum: One-click installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/agrimsingh/ralph-wiggum-cursor/main/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/yanmasharski/ralph-wiggum-cursor/main/install.sh | bash
+#
+# Override script source (optional):
+#   RALPH_INSTALL_REPO=https://raw.githubusercontent.com/you/repo/main curl ... | bash
 
 set -euo pipefail
 
-REPO_RAW="https://raw.githubusercontent.com/agrimsingh/ralph-wiggum-cursor/main"
+REPO_RAW="${RALPH_INSTALL_REPO:-https://raw.githubusercontent.com/yanmasharski/ralph-wiggum-cursor/main}"
 
 echo "═══════════════════════════════════════════════════════════════════"
 echo "🐛 Ralph Wiggum Installer"
@@ -85,7 +88,9 @@ mkdir -p .ralph
 # DOWNLOAD SCRIPTS
 # =============================================================================
 
-echo "📥 Downloading Ralph scripts..."
+echo "📥 Downloading Ralph scripts from:"
+echo "   $REPO_RAW/scripts/"
+echo ""
 
 SCRIPTS=(
   "ralph-common.sh"
